@@ -1,0 +1,12 @@
+name = "hermes-linear-relay"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+# Set your account: `export CLOUDFLARE_ACCOUNT_ID=...` or add `account_id = "..."` here.
+
+[[durable_objects.bindings]]
+name = "RELAY"
+class_name = "Relay"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Relay"]
