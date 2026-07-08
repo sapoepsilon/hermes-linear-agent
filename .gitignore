@@ -5,3 +5,4 @@ node_modules/
 .env
 linear-agent.env
 oauth.out
+tokens.json

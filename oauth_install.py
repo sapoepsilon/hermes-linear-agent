@@ -24,6 +24,8 @@ authorize = "https://linear.app/oauth/authorize?" + urllib.parse.urlencode({
     "response_type": "code",
     "scope": SCOPES,
     "actor": "app",
+    # without this, an already-installed app shows "Manage" with no Authorize button
+    "prompt": "consent",
 })
 
 _token = {}
@@ -72,10 +74,16 @@ def main():
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
         viewer = json.loads(resp.read()).get("data", {}).get("viewer", {})
+    with open("tokens.json", "w") as handle:
+        json.dump({"access_token": token,
+                   "refresh_token": _token.get("refresh_token")}, handle)
+    os.chmod("tokens.json", 0o600)
     print("\n=== SUCCESS ===")
-    print("LINEAR_ACCESS_TOKEN =", token)
     print("agent user:", viewer)
-    print("\nPaste LINEAR_ACCESS_TOKEN into the agent host's linear-agent.env\n")
+    print("refresh_token captured:", bool(_token.get("refresh_token")))
+    print("\nWrote ./tokens.json — copy it to the agent host (LINEAR_TOKENS_FILE,")
+    print("default /opt/linear-agent/tokens.json) and set LINEAR_CLIENT_ID +")
+    print("LINEAR_CLIENT_SECRET in linear-agent.env so the handler can auto-refresh.\n")
 
 
 if __name__ == "__main__":
