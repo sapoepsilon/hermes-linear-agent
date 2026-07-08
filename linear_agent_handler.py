@@ -137,6 +137,49 @@ def emit(session_id, activity_type, body):
                                         "content": {"type": activity_type, "body": body}}})
 
 
+SESSION_CONTEXT = """
+query($id: String!) {
+  agentSession(id: $id) {
+    issue { identifier title description }
+    activities {
+      nodes {
+        createdAt
+        content {
+          __typename
+          ... on AgentActivityPromptContent { body }
+          ... on AgentActivityResponseContent { body }
+        }
+      }
+    }
+  }
+}
+"""
+
+
+def session_context(session_id, skip_prompt=""):
+    """Issue details + prior prompt/response turns, oldest first, for follow-ups."""
+    try:
+        session = (graphql(SESSION_CONTEXT, {"id": session_id})
+                   .get("data") or {}).get("agentSession") or {}
+        issue = session.get("issue") or {}
+        lines = [f"Issue {issue.get('identifier', '?')}: {issue.get('title', '')}"]
+        if issue.get("description"):
+            lines.append(issue["description"])
+        nodes = (session.get("activities") or {}).get("nodes") or []
+        for node in sorted(nodes, key=lambda n: n.get("createdAt", "")):
+            content = node.get("content") or {}
+            body = content.get("body") or ""
+            if not body or body == skip_prompt:
+                continue
+            role = ("User" if content["__typename"] == "AgentActivityPromptContent"
+                    else "You (agent) replied")
+            lines.append(f"{role}: {body}")
+        return "\n\n".join(lines)[:24000]
+    except Exception as error:  # noqa: BLE001 - context is best-effort
+        print(f"session_context failed: {error}", flush=True)
+        return ""
+
+
 def run_agent(prompt):
     command = [HERMES_BIN, "-z", prompt, "--yolo"]
     if HERMES_SKILLS:
@@ -156,7 +199,10 @@ def handle_session(payload):
     try:
         emit(session_id, "thought", "On it — reading the issue…")
         if payload.get("action") == "prompted":
-            prompt = (payload.get("agentActivity") or {}).get("body", "")
+            new_prompt = (payload.get("agentActivity") or {}).get("body", "")
+            context = session_context(session_id, skip_prompt=new_prompt)
+            prompt = (f"{context}\n\nNew user message: {new_prompt}"
+                      if context else new_prompt)
         else:
             prompt = payload.get("promptContext") or json.dumps(session.get("issue", {}))[:4000]
         framed = (
