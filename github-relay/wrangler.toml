@@ -1,0 +1,24 @@
+name = "whispera-agent-hooks"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+
+kv_namespaces = [
+  { binding = "EVENTS", id = "246da077f231497d9aee2e884c6e6871" }
+]
+
+# Per-IP rate limit for POST /github: 20 requests / 60 s.
+[[unsafe.bindings]]
+name = "GITHUB_RL"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }
+
+[vars]
+# Comma-separated GitHub handles allowed to trigger the agent (lowercased).
+ALLOWED_AUTHORS = "sapoepsilon"
+# Comma-separated webhook event types to queue.
+ALLOWED_EVENTS = "issue_comment,pull_request_review_comment"
+
+# Secrets (set with `wrangler secret put`):
+#   WEBHOOK_SECRET — shared with the GitHub App webhook config
+#   POLL_TOKEN     — bearer token the poller presents to GET /drain

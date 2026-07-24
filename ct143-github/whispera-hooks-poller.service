@@ -1,0 +1,12 @@
+[Unit]
+Description=Whispera GitHub hooks poller (Cloudflare relay -> Hermes)
+After=network-online.target hermes-gateway.service
+
+[Service]
+EnvironmentFile=/root/.hermes/whispera-hooks.env
+ExecStart=/usr/bin/python3 /usr/local/bin/whispera-hooks-poller.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
